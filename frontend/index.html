@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FOM Supply Tattoo - Tienda de Tatuajes</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <!-- Header -->
+    <header>
+        <div class="container">
+            <div class="logo">
+                <h1><i class="fas fa-tattoo"></i> FOM Supply Tattoo</h1>
+            </div>
+            <div class="header-actions">
+                <button class="cart-btn" onclick="verCarrito()">
+                    <i class="fas fa-shopping-cart"></i>
+                    <span id="cart-count">0</span>
+                </button>
+                <button class="admin-btn" onclick="window.location.href='admin.html'">
+                    <i class="fas fa-user-shield"></i> Admin
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Hero -->
+    <section class="hero">
+        <div class="container">
+            <h2>Suministros Profesionales para Tatuajes</h2>
+            <p>Calidad premium para artistas exigentes</p>
+            <button class="btn-primary" onclick="scrollToProducts()">Ver Productos</button>
+        </div>
+    </section>
+
+    <!-- Filtros -->
+    <div class="container">
+        <div class="filters">
+            <input type="text" id="search" placeholder="Buscar productos..." onkeyup="filtrarProductos()">
+            <div class="category-buttons" id="categorias">
+                <button class="active" data-categoria="todos" onclick="filtrarPorCategoria('todos')">Todos</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Productos -->
+    <div class="container">
+        <div class="products-grid" id="products">
+            <div class="loading">Cargando productos...</div>
+        </div>
+    </div>
+
+    <!-- Modal Carrito -->
+    <div id="cart-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2><i class="fas fa-shopping-cart"></i> Mi Carrito</h2>
+                <span class="close" onclick="cerrarCarrito()">&times;</span>
+            </div>
+            <div class="modal-body" id="cart-items">
+                <p>Cargando...</p>
+            </div>
+            <div class="modal-footer">
+                <div class="cart-total">
+                    <strong>Total: </strong>
+                    <span id="cart-total">$0.00</span>
+                </div>
+                <div class="checkout-section">
+                    <label>
+                        <input type="checkbox" id="generar-factura" onchange="toggleFactura()">
+                        <i class="fas fa-file-invoice"></i> Generar factura
+                    </label>
+                    <div id="factura-form" style="display:none; margin-top: 10px;">
+                        <input type="text" id="cliente-nombre" placeholder="Nombre completo" style="width:100%; margin-bottom:5px; padding:8px;">
+                        <input type="text" id="cliente-identificacion" placeholder="Identificación" style="width:100%; margin-bottom:5px; padding:8px;">
+                        <input type="email" id="cliente-email" placeholder="Email" style="width:100%; margin-bottom:5px; padding:8px;">
+                        <input type="text" id="cliente-telefono" placeholder="Teléfono" style="width:100%; margin-bottom:5px; padding:8px;">
+                        <input type="text" id="cliente-direccion" placeholder="Dirección" style="width:100%; padding:8px;">
+                    </div>
+                    <select id="metodo-pago" class="payment-method">
+                        <option value="Efectivo">💵 Efectivo</option>
+                        <option value="Tarjeta Crédito">💳 Tarjeta Crédito</option>
+                        <option value="Tarjeta Débito">💳 Tarjeta Débito</option>
+                        <option value="Transferencia">🏦 Transferencia</option>
+                    </select>
+                    <button class="btn-checkout" onclick="finalizarCompra()">
+                        <i class="fas fa-check"></i> Finalizar Compra
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Notificación -->
+    <div id="notification" class="notification"></div>
+
+    <!-- Footer -->
+    <footer>
+        <div class="container">
+            <p>&copy; 2024 FOM Supply Tattoo - Todos los derechos reservados</p>
+        </div>
+    </footer>
+
+    <script src="script.js"></script>
+</body>
+</html>

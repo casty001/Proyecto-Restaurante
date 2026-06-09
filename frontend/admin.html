@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin - FOM Supply Tattoo</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <!-- Header Admin -->
+    <header class="admin-header">
+        <div class="container">
+            <div class="logo">
+                <h1><i class="fas fa-tattoo"></i> FOM Supply Admin</h1>
+            </div>
+            <div class="admin-tabs">
+                <button class="tab-btn active" onclick="mostrarTab('ventas')">
+                    <i class="fas fa-chart-line"></i> Ventas
+                </button>
+                <button class="tab-btn" onclick="mostrarTab('productos')">
+                    <i class="fas fa-boxes"></i> Productos
+                </button>
+                <button class="tab-btn" onclick="mostrarTab('inventario')">
+                    <i class="fas fa-warehouse"></i> Inventario
+                </button>
+                <button class="tab-btn" onclick="window.location.href='index.html'">
+                    <i class="fas fa-store"></i> Tienda
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <div class="container">
+        <!-- Tab Ventas -->
+        <div id="tab-ventas" class="tab-content active">
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <i class="fas fa-chart-line"></i>
+                    <h3>Total Ventas</h3>
+                    <p id="total-ventas">0</p>
+                </div>
+                <div class="stat-card">
+                    <i class="fas fa-dollar-sign"></i>
+                    <h3>Ingresos</h3>
+                    <p id="ingresos-totales">$0</p>
+                </div>
+                <div class="stat-card">
+                    <i class="fas fa-calendar-day"></i>
+                    <h3>Ventas Hoy</h3>
+                    <p id="ventas-hoy">0</p>
+                </div>
+                <div class="stat-card">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <h3>Bajo Stock</h3>
+                    <p id="bajo-stock">0</p>
+                </div>
+            </div>
+
+            <div class="section-header">
+                <h2>Historial de Ventas</h2>
+                <div class="filter-dates">
+                    <input type="date" id="fecha-inicio">
+                    <input type="date" id="fecha-fin">
+                    <button onclick="filtrarVentas()" class="btn-secondary">Filtrar</button>
+                </div>
+            </div>
+
+            <div class="table-container">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Fecha</th>
+                            <th>Cliente</th>
+                            <th>Total</th>
+                            <th>Método</th>
+                            <th>Estado</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody id="ventas-lista">
+                        <tr><td colspan="7">Cargando...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Tab Productos -->
+        <div id="tab-productos" class="tab-content">
+            <div class="section-header">
+                <h2>Gestión de Productos</h2>
+                <button class="btn-primary" onclick="abrirModalProducto()">
+                    <i class="fas fa-plus"></i> Nuevo Producto
+                </button>
+            </div>
+            <div class="table-container">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Producto</th>
+                            <th>Categoría</th>
+                            <th>Precio</th>
+                            <th>Stock</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody id="productos-lista">
+                        <tr><td colspan="6">Cargando...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Tab Inventario -->
+        <div id="tab-inventario" class="tab-content">
+            <div class="section-header">
+                <h2>Control de Inventario</h2>
+            </div>
+            <div class="alert alert-warning" id="alert-bajo-stock"></div>
+            <div class="table-container">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Producto</th>
+                            <th>Stock Actual</th>
+                            <th>Estado</th>
+                            <th>Acción</th>
+                        </tr>
+                    </thead>
+                    <tbody id="inventario-lista">
+                        <tr><td colspan="5">Cargando...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Producto -->
+    <div id="modal-producto" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modal-titulo">Nuevo Producto</h2>
+                <span class="close" onclick="cerrarModalProducto()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <form id="form-producto">
+                    <input type="hidden" id="producto-id">
+                    <div class="form-group">
+                        <label>Nombre:</label>
+                        <input type="text" id="producto-nombre" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Descripción:</label>
+                        <textarea id="producto-descripcion" rows="3"></textarea>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Precio:</label>
+                            <input type="number" id="producto-precio" step="0.01" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Categoría:</label>
+                            <select id="producto-categoria" required></select>
+                        </div>
+                        <div class="form-group">
+                            <label>Stock:</label>
+                            <input type="number" id="producto-stock" required>
+                        </div>
+                    </div>
+                    <div class="form-buttons">
+                        <button type="button" class="btn-secondary" onclick="cerrarModalProducto()">Cancelar</button>
+                        <button type="submit" class="btn-primary">Guardar</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script src="admin.js"></script>
+</body>
+</html>
