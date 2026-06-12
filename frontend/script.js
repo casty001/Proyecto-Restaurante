@@ -104,6 +104,27 @@ function scrollToProducts() {
 }
 
 // Agregar al carrito
+async function cargarCarrito() {
+    try {
+        const response = await fetch(`${API_URL}/carrito.php?sesion_id=${sesionId}`);
+        const data = await response.json();
+        
+        console.log('Respuesta del carrito:', data); // Para depurar
+        
+        if (data.success !== false) {
+            carrito = data.items || [];
+            document.getElementById('cart-count').textContent = carrito.reduce((sum, i) => sum + i.cantidad, 0);
+        } else {
+            console.error('Error en respuesta:', data.error);
+            carrito = [];
+        }
+    } catch (error) {
+        console.error('Error cargando carrito:', error);
+        carrito = [];
+    }
+}
+
+// Modificar agregarAlCarrito
 async function agregarAlCarrito(id_producto) {
     try {
         const response = await fetch(`${API_URL}/carrito.php`, {
@@ -117,25 +138,69 @@ async function agregarAlCarrito(id_producto) {
             })
         });
         
-        if (response.ok) {
+        const data = await response.json();
+        console.log('Respuesta agregar:', data);
+        
+        if (data.success) {
             await cargarCarrito();
             mostrarNotificacion('Producto agregado al carrito');
+        } else {
+            mostrarNotificacion(data.message || 'Error al agregar', 'error');
         }
     } catch (error) {
         console.error('Error:', error);
-        mostrarNotificacion('Error al agregar', 'error');
+        mostrarNotificacion('Error al agregar al carrito', 'error');
     }
 }
 
 // Cargar carrito
+// Modificar la función cargarCarrito
 async function cargarCarrito() {
     try {
         const response = await fetch(`${API_URL}/carrito.php?sesion_id=${sesionId}`);
         const data = await response.json();
-        carrito = data.items || [];
-        document.getElementById('cart-count').textContent = carrito.reduce((sum, i) => sum + i.cantidad, 0);
+        
+        console.log('Respuesta del carrito:', data); // Para depurar
+        
+        if (data.success !== false) {
+            carrito = data.items || [];
+            document.getElementById('cart-count').textContent = carrito.reduce((sum, i) => sum + i.cantidad, 0);
+        } else {
+            console.error('Error en respuesta:', data.error);
+            carrito = [];
+        }
     } catch (error) {
         console.error('Error cargando carrito:', error);
+        carrito = [];
+    }
+}
+
+// Modificar agregarAlCarrito
+async function agregarAlCarrito(id_producto) {
+    try {
+        const response = await fetch(`${API_URL}/carrito.php`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                action: 'add',
+                sesion_id: sesionId,
+                id_producto: id_producto,
+                cantidad: 1
+            })
+        });
+        
+        const data = await response.json();
+        console.log('Respuesta agregar:', data);
+        
+        if (data.success) {
+            await cargarCarrito();
+            mostrarNotificacion('Producto agregado al carrito');
+        } else {
+            mostrarNotificacion(data.message || 'Error al agregar', 'error');
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        mostrarNotificacion('Error al agregar al carrito', 'error');
     }
 }
 

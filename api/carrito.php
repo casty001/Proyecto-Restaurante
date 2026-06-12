@@ -1,152 +1,179 @@
 <?php
+// Eliminar CUALQUIER espacio o línea en blanco antes de esta línea
 require_once '../config/database.php';
+
+// Forzar cabecera JSON
+header('Content-Type: application/json');
+header('Access-Control-Allow-Origin: *');
+header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
+header('Access-Control-Allow-Headers: Content-Type');
+
+// Manejar preflight de CORS
+if ($_SERVER['REQUEST_METHOD'] == 'OPTIONS') {
+    http_response_code(200);
+    exit();
+}
 
 $method = $_SERVER['REQUEST_METHOD'];
 $sesion_id = isset($_GET['sesion_id']) ? $_GET['sesion_id'] : null;
 
-switch($method) {
-    case 'GET':
-        if($sesion_id) {
-            // Obtener carrito
-            $stmt = $conexion->prepare("SELECT id_carrito FROM carrito WHERE sesion_id = ?");
-            $stmt->execute([$sesion_id]);
-            $carrito = $stmt->fetch();
-            
-            if(!$carrito) {
-                // Crear carrito si no existe
-                $stmt = $conexion->prepare("INSERT INTO carrito (sesion_id) VALUES (?)");
+try {
+    switch($method) {
+        case 'GET':
+            if($sesion_id) {
+                // Obtener carrito
+                $stmt = $conexion->prepare("SELECT id_carrito FROM carrito WHERE sesion_id = ?");
                 $stmt->execute([$sesion_id]);
-                $carrito_id = $conexion->lastInsertId();
+                $carrito = $stmt->fetch();
+                
+                if(!$carrito) {
+                    // Crear carrito si no existe
+                    $stmt = $conexion->prepare("INSERT INTO carrito (sesion_id) VALUES (?)");
+                    $stmt->execute([$sesion_id]);
+                    $carrito_id = $conexion->lastInsertId();
+                } else {
+                    $carrito_id = $carrito['id_carrito'];
+                }
+                
+                // Obtener items del carrito
+                $stmt = $conexion->prepare("
+                    SELECT dc.*, p.nombre_producto, p.precio, p.stock
+                    FROM detalle_carrito dc
+                    JOIN producto p ON dc.id_producto = p.id_producto
+                    WHERE dc.id_carrito = ?
+                ");
+                $stmt->execute([$carrito_id]);
+                $items = $stmt->fetchAll();
+                
+                // Calcular total
+                $total = 0;
+                foreach($items as $item) {
+                    $total += $item['precio'] * $item['cantidad'];
+                }
+                
+                echo json_encode([
+                    "success" => true,
+                    "id_carrito" => $carrito_id,
+                    "items" => $items,
+                    "total" => $total
+                ]);
             } else {
-                $carrito_id = $carrito['id_carrito'];
+                echo json_encode(["success" => false, "error" => "sesion_id requerido"]);
             }
+            break;
             
-            // Obtener items del carrito
-            $stmt = $conexion->prepare("
-                SELECT dc.*, p.nombre_producto, p.precio, p.stock
-                FROM detalle_carrito dc
-                JOIN producto p ON dc.id_producto = p.id_producto
-                WHERE dc.id_carrito = ?
-            ");
-            $stmt->execute([$carrito_id]);
-            $items = $stmt->fetchAll();
+        case 'POST':
+            $data = json_decode(file_get_contents('php://input'), true);
+            $action = $data['action'] ?? '';
             
-            // Calcular total
-            $total = 0;
-            foreach($items as $item) {
-                $total += $item['precio'] * $item['cantidad'];
-            }
-            
-            echo json_encode([
-                "id_carrito" => $carrito_id,
-                "items" => $items,
-                "total" => $total
-            ]);
-        }
-        break;
-        
-    case 'POST':
-        $data = json_decode(file_get_contents('php://input'), true);
-        $action = $data['action'] ?? '';
-        
-        if($action === 'add') {
-            // Agregar al carrito
-            $stmt = $conexion->prepare("SELECT id_carrito FROM carrito WHERE sesion_id = ?");
-            $stmt->execute([$data['sesion_id']]);
-            $carrito = $stmt->fetch();
-            
-            if(!$carrito) {
-                $stmt = $conexion->prepare("INSERT INTO carrito (sesion_id) VALUES (?)");
+            if($action === 'add') {
+                // Agregar al carrito
+                $stmt = $conexion->prepare("SELECT id_carrito FROM carrito WHERE sesion_id = ?");
                 $stmt->execute([$data['sesion_id']]);
-                $carrito_id = $conexion->lastInsertId();
+                $carrito = $stmt->fetch();
+                
+                if(!$carrito) {
+                    $stmt = $conexion->prepare("INSERT INTO carrito (sesion_id) VALUES (?)");
+                    $stmt->execute([$data['sesion_id']]);
+                    $carrito_id = $conexion->lastInsertId();
+                } else {
+                    $carrito_id = $carrito['id_carrito'];
+                }
+                
+                // Verificar si el producto ya existe en el carrito
+                $stmt = $conexion->prepare("
+                    SELECT * FROM detalle_carrito 
+                    WHERE id_carrito = ? AND id_producto = ?
+                ");
+                $stmt->execute([$carrito_id, $data['id_producto']]);
+                $existente = $stmt->fetch();
+                
+                if($existente) {
+                    $stmt = $conexion->prepare("
+                        UPDATE detalle_carrito 
+                        SET cantidad = cantidad + ? 
+                        WHERE id_detalle = ?
+                    ");
+                    $result = $stmt->execute([$data['cantidad'], $existente['id_detalle']]);
+                } else {
+                    $stmt = $conexion->prepare("
+                        INSERT INTO detalle_carrito (id_carrito, id_producto, cantidad) 
+                        VALUES (?, ?, ?)
+                    ");
+                    $result = $stmt->execute([$carrito_id, $data['id_producto'], $data['cantidad']]);
+                }
+                
+                if($result) {
+                    echo json_encode(["success" => true, "message" => "Producto agregado al carrito"]);
+                } else {
+                    echo json_encode(["success" => false, "message" => "Error al agregar producto"]);
+                }
             } else {
-                $carrito_id = $carrito['id_carrito'];
+                echo json_encode(["success" => false, "message" => "Acción no válida"]);
             }
+            break;
             
-            // Verificar si el producto ya existe en el carrito
+        case 'PUT':
+            $data = json_decode(file_get_contents('php://input'), true);
+            
             $stmt = $conexion->prepare("
-                SELECT * FROM detalle_carrito 
-                WHERE id_carrito = ? AND id_producto = ?
+                UPDATE detalle_carrito dc
+                JOIN carrito c ON dc.id_carrito = c.id_carrito
+                SET dc.cantidad = ?
+                WHERE c.sesion_id = ? AND dc.id_producto = ?
             ");
-            $stmt->execute([$carrito_id, $data['id_producto']]);
-            $existente = $stmt->fetch();
             
-            if($existente) {
-                $stmt = $conexion->prepare("
-                    UPDATE detalle_carrito 
-                    SET cantidad = cantidad + ? 
-                    WHERE id_detalle = ?
-                ");
-                $result = $stmt->execute([$data['cantidad'], $existente['id_detalle']]);
-            } else {
-                $stmt = $conexion->prepare("
-                    INSERT INTO detalle_carrito (id_carrito, id_producto, cantidad) 
-                    VALUES (?, ?, ?)
-                ");
-                $result = $stmt->execute([$carrito_id, $data['id_producto'], $data['cantidad']]);
-            }
+            $result = $stmt->execute([$data['cantidad'], $data['sesion_id'], $data['id_producto']]);
             
             if($result) {
-                echo json_encode(["message" => "Producto agregado al carrito"]);
+                echo json_encode(["success" => true, "message" => "Carrito actualizado"]);
             } else {
-                http_response_code(500);
-                echo json_encode(["message" => "Error al agregar producto"]);
+                echo json_encode(["success" => false, "message" => "Error al actualizar carrito"]);
             }
-        }
-        break;
-        
-    case 'PUT':
-        $data = json_decode(file_get_contents('php://input'), true);
-        
-        $stmt = $conexion->prepare("
-            UPDATE detalle_carrito dc
-            JOIN carrito c ON dc.id_carrito = c.id_carrito
-            SET dc.cantidad = ?
-            WHERE c.sesion_id = ? AND dc.id_producto = ?
-        ");
-        
-        $result = $stmt->execute([$data['cantidad'], $data['sesion_id'], $data['id_producto']]);
-        
-        if($result) {
-            echo json_encode(["message" => "Carrito actualizado"]);
-        } else {
-            http_response_code(500);
-            echo json_encode(["message" => "Error al actualizar carrito"]);
-        }
-        break;
-        
-    case 'DELETE':
-        if($sesion_id) {
-            $action = isset($_GET['action']) ? $_GET['action'] : '';
+            break;
             
-            if($action === 'clear') {
-                // Vaciar carrito completo
-                $stmt = $conexion->prepare("
-                    DELETE dc FROM detalle_carrito dc
-                    JOIN carrito c ON dc.id_carrito = c.id_carrito
-                    WHERE c.sesion_id = ?
-                ");
-                $result = $stmt->execute([$sesion_id]);
-            } else {
-                // Eliminar un producto específico
-                $id_producto = isset($_GET['id_producto']) ? $_GET['id_producto'] : null;
-                if($id_producto) {
+        case 'DELETE':
+            if($sesion_id) {
+                $action = isset($_GET['action']) ? $_GET['action'] : '';
+                
+                if($action === 'clear') {
+                    // Vaciar carrito completo
                     $stmt = $conexion->prepare("
                         DELETE dc FROM detalle_carrito dc
                         JOIN carrito c ON dc.id_carrito = c.id_carrito
-                        WHERE c.sesion_id = ? AND dc.id_producto = ?
+                        WHERE c.sesion_id = ?
                     ");
-                    $result = $stmt->execute([$sesion_id, $id_producto]);
+                    $result = $stmt->execute([$sesion_id]);
+                } else {
+                    // Eliminar un producto específico
+                    $id_producto = isset($_GET['id_producto']) ? $_GET['id_producto'] : null;
+                    if($id_producto) {
+                        $stmt = $conexion->prepare("
+                            DELETE dc FROM detalle_carrito dc
+                            JOIN carrito c ON dc.id_carrito = c.id_carrito
+                            WHERE c.sesion_id = ? AND dc.id_producto = ?
+                        ");
+                        $result = $stmt->execute([$sesion_id, $id_producto]);
+                    } else {
+                        echo json_encode(["success" => false, "message" => "ID de producto requerido"]);
+                        exit;
+                    }
                 }
-            }
-            
-            if($result) {
-                echo json_encode(["message" => "Carrito actualizado"]);
+                
+                if($result) {
+                    echo json_encode(["success" => true, "message" => "Carrito actualizado"]);
+                } else {
+                    echo json_encode(["success" => false, "message" => "Error al actualizar carrito"]);
+                }
             } else {
-                http_response_code(500);
-                echo json_encode(["message" => "Error al actualizar carrito"]);
+                echo json_encode(["success" => false, "message" => "sesion_id requerido"]);
             }
-        }
-        break;
+            break;
+            
+        default:
+            echo json_encode(["success" => false, "message" => "Método no permitido"]);
+    }
+} catch(Exception $e) {
+    echo json_encode(["success" => false, "error" => $e->getMessage()]);
 }
 ?>
